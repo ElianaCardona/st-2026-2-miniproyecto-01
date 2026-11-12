@@ -40,14 +40,23 @@ PERIODO = 12
 
 # Lo que se hizo con los huecos y con los datos atípicos, en una línea. Va
 # a la columna `decision` de la tabla de métricas.
-DECISION = "TODO: describa aquí la decisión sobre huecos y datos atípicos"
+DECISION = ("Serie sin huecos. Se conservaron las 120 observaciones originales. "
+            "La revisión por mes calendario señaló valores inusuales, sin "
+            "evidencia de errores de registro.")
 
 
 def preparar(serie):
-    """TODO: aplique la decisión del grupo sobre huecos y datos atípicos.
+    """Decisión del grupo: conservar la serie tal como llega, sin cambios.
 
-    Por ejemplo, interpolar los meses vacíos o recortar el tramo afectado.
-    Debe devolver una serie sin NaN.
+    El CSV verificado trae los 120 meses consecutivos de 2016-01 a 2025-12
+    sin vacíos, así que no hay huecos que rellenar. La revisión por mes
+    calendario (valla de Tukey contra los otros 9 años del mismo mes, con
+    el filtro de Hampel como contraste) señaló observaciones inusuales
+    (8 con Tukey, 4 con Hampel; ambos coincidieron en nov-2016, ago-2017 y
+    sep-2017). Las alertas identifican observaciones inusuales y la
+    revisión no encontró evidencia de errores de registro, así que se
+    conservan los 120 valores originales: se devuelve la serie sin
+    modificaciones.
     """
     return serie
 
