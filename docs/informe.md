@@ -78,10 +78,9 @@ el ingenuo que se cuantifica en la sección 3.
 
 Medí todos los modelos con el mismo backtest de orígenes móviles (el de
 comun.py, sin modificar). La ventana de prueba son los últimos 24 meses
-de la serie, de enero de 2024 a diciembre de 2025, y se recorren 13
-orígenes: en cada uno el modelo entrena únicamente con los meses
-anteriores al origen y pronostica los 12 meses siguientes, de modo que
-los entrenamientos terminan entre diciembre de 2023 y diciembre de 2024.
+de la serie, de enero de 2024 a diciembre de 2025, y se recorren 13 orígenes. En cada origen, 
+el modelo usa los datos disponibles hasta ese mes, inclusive, y pronostica los 12 meses siguientes,
+ de modo que los entrenamientos terminan entre diciembre de 2023 y diciembre de 2024.
 La unión de las ventanas de prueba cubre los 24 meses de 2024-01 a
 2025-12 y cada mes la pronostican entre 1 y 12 orígenes (enero de 2024
 solo uno; en 2025, doce en enero y uno en diciembre). El RMSE, el MAE y
@@ -173,11 +172,7 @@ $$
 \qquad \hat{\sigma}_\varepsilon = 7.032{,}65 \text{ miles de MWh}.
 $$
 
-Su único parámetro es el coeficiente de la media móvil estacional, que
-statsmodels reporta como ma.S.L12 = -0,2767. La ecuación dice que el
-cambio anual, $y_t - y_{t-12}$, sigue a su valor del mes anterior más un
-choque nuevo, y que una fracción de 0,2767 del choque registrado un año
-antes se resta: un choque del cambio anual tiende a revertirse
+El único coeficiente dinámico estimado corresponde al término de media móvil estacional. `statsmodels` lo reporta como `ma.S.L12`, con un valor de −0,2767. El ajuste también estima la varianza de las innovaciones. Según la ecuación, el cambio anual de las ventas, $y_t-y_{t-12}$, es igual al cambio anual del mes anterior, más la innovación del mes actual, menos 0,2767 veces la innovación de hace doce meses.
 parcialmente al año siguiente.
 
 ![Residuos](../figuras/residuos.png)
@@ -192,16 +187,14 @@ mediados de 2017 los residuos oscilan alrededor de cero sin tendencia
 visible y con dispersión parecida a lo largo de la muestra. En la ACF
 solo el rezago 12 queda fuera de la banda de confianza (-0,36).
 
-Apliqué la prueba de Ljung-Box a los residuos como prueba conjunta de
-que las primeras $m$ autocorrelaciones son nulas, en los rezagos 12 y
-24, con gl = p + q + P + Q = 1 para descontar el parámetro estimado.
-Hasta el rezago 12 la prueba rechaza (estadístico 23,24, valor
-p = 0,0164): queda autocorrelación estacional que el modelo no explica.
-Hasta el rezago 24 no rechaza (25,77, valor p = 0,3120). El rechazo en
-12 es coherente con el casi empate del segundo lugar de la rejilla y
-sugiere que el ajuste no agota la estructura estacional; el backtest de
-la sección 3 aporta una verificación independiente de la capacidad
-predictiva del modelo.
+Apliqué la prueba de Ljung–Box para evaluar conjuntamente las autocorrelaciones 
+de los residuos hasta los rezagos 12 y 24. Desconté un grado de libertad por el
+coeficiente de media móvil estacional estimado, por lo que las pruebas usaron
+ 11 y 23 grados de libertad, respectivamente. Hasta el rezago 12, rechacé la hipótesis 
+ de autocorrelaciones nulas al nivel del 5 % (estadístico de 23,24 y valor p de 0,0164).
+  En la ACF también destaca el rezago 12, lo que sugiere que queda dependencia estacional 
+  en los residuos. Hasta el rezago 24, la prueba arrojó un estadístico de 25,77 y 
+  un valor p de 0,3120, por lo que no rechacé la hipótesis nula para ese conjunto de rezagos.
 
 Para el SARIMAX agregué como exógena el número de días calendario de
 cada mes. Se conoce por completo de antemano: el calendario está fijado
