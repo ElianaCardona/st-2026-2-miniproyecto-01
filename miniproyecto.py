@@ -17,7 +17,9 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
+from statsmodels.graphics.tsaplots import plot_acf, plot_pacf  # noqa: E402
 from statsmodels.tsa.seasonal import STL  # noqa: E402
+from statsmodels.tsa.stattools import acf, adfuller, pacf  # noqa: E402
 
 from comun import (RAIZ, backtest, cargar_serie, estacional_ingenuo,  # noqa: E402
                    fechas_siguientes, ingenuo)
@@ -118,12 +120,95 @@ def descomponer(serie):
 # ============================================================
 
 def estacionariedad(serie):
-    """TODO: ADF sobre la serie, su diferencia regular, la estacional y las dos.
+    """ADF en el nivel, la diferencia regular, la estacional y ambas; elige (d, D).
 
-    Imprima el valor p de cada versión, elija d y D, y guarde la ACF y la
-    PACF de la serie elegida en figuras/acf_pacf.png. Devuelva (d, D).
+    Decide con los primeros 96 meses (2016-01 a 2023-12); 2024 y 2025
+    quedan reservados para el backtest. Imprime el estadístico, el valor p
+    y el número de observaciones de cada versión, elige d y D con la
+    prueba y los picos de la ACF en 12 y 24, guarda la ACF y la PACF de la
+    versión elegida en figuras/acf_pacf.png y devuelve (d, D).
     """
-    raise NotImplementedError("estacionariedad, ACF y PACF")
+    entrenamiento = serie.iloc[:96]  # 2016-01 a 2023-12; 2024-2025 para el backtest
+
+    versiones = [
+        ("original", entrenamiento),
+        ("d1 regular", entrenamiento.diff().dropna()),
+        ("D12 estacional", entrenamiento.diff(PERIODO).dropna()),
+        ("d1 + D12 ambas", entrenamiento.diff().diff(PERIODO).dropna()),
+    ]
+
+    print(f"Prueba ADF, {len(entrenamiento)} meses "
+          f"({entrenamiento.index[0]:%Y-%m} a {entrenamiento.index[-1]:%Y-%m}):")
+    print("  versión             estadístico    valor p   nobs")
+    valor_p = {}
+    for nombre, datos in versiones:
+        estadistico, p, _, nobs, *_ = adfuller(datos)
+        valor_p[nombre] = p
+        print(f"  {nombre:16s}  {estadistico:12.3f}  {p:8.4f}  {nobs:5d}")
+
+    d = 0 if valor_p["original"] < 0.05 else 1
+
+    # ¿Sobrevive el ciclo anual a la diferencia regular? ACF de d1 en 12 y 24.
+    d1 = versiones[1][1]
+    banda_d1 = 1.96 / (len(d1) ** 0.5)
+    acf_d1 = acf(d1, nlags=24)
+    picos = abs(acf_d1[12]) > banda_d1 or abs(acf_d1[24]) > banda_d1
+    if d:
+        D = 1 if (valor_p["D12 estacional"] >= 0.05 or picos) else 0
+    else:
+        D = 1 if valor_p["D12 estacional"] >= 0.05 else 0
+
+    elegida = entrenamiento
+    if d:
+        elegida = elegida.diff()
+    if D:
+        elegida = elegida.diff(PERIODO)
+    elegida = elegida.dropna()
+
+    print()
+    print(f"Decisión: d = {d}, D = {D}; versión elegida: "
+          f"{'d1 + D12' if d and D else 'd1' if d else 'D12' if D else 'nivel'}")
+    if d:
+        print(f"  El nivel no es estacionario (p = {valor_p['original']:.4f}): "
+              "la diferencia regular es necesaria.")
+    else:
+        print(f"  El nivel ya es estacionario (p = {valor_p['original']:.4f}).")
+    if valor_p["D12 estacional"] >= 0.05:
+        print(f"  La diferencia estacional sola no alcanza estacionariedad "
+              f"(p = {valor_p['D12 estacional']:.4f}): queda el ascenso lento "
+              "del nivel, no basta con ella.")
+    else:
+        print(f"  La diferencia estacional sola sí es estacionaria "
+              f"(p = {valor_p['D12 estacional']:.4f}).")
+    if d and picos:
+        print(f"  Tras la diferencia regular el ciclo anual persiste "
+              f"(ACF en 12: {acf_d1[12]:+.3f}, en 24: {acf_d1[24]:+.3f}, "
+              f"banda ±{banda_d1:.3f}): hace falta la diferencia estacional.")
+    print(f"  Con ambas diferencias la ADF rechaza "
+          f"(p = {valor_p['d1 + D12 ambas']:.4f}).")
+
+    banda = 1.96 / (len(elegida) ** 0.5)
+    acf_elegida = acf(elegida, nlags=24)
+    pacf_elegida = pacf(elegida, nlags=24, method="ywm")
+    print()
+    print(f"ACF y PACF de la versión elegida (n = {len(elegida)}, "
+          f"banda ±{banda:.3f}):")
+    print("  rezago     ACF    PACF")
+    for k in (1, 2, 3, 12, 13, 24):
+        marca = "  <-" if (abs(acf_elegida[k]) > banda
+                           or abs(pacf_elegida[k]) > banda) else ""
+        print(f"  {k:6d}  {acf_elegida[k]:+.3f}  {pacf_elegida[k]:+.3f}{marca}")
+
+    figura, ejes = plt.subplots(1, 2, figsize=(9.6, 3.6))
+    plot_acf(elegida, lags=36, zero=False, ax=ejes[0], title="ACF")
+    plot_pacf(elegida, lags=36, zero=False, ax=ejes[1], method="ywm",
+              title="PACF")
+    figura.suptitle(f"{VALOR}: d = {d}, D = {D} (2016-01 a 2023-12)")
+    figura.tight_layout()
+    figura.savefig(FIGURAS / "acf_pacf.png", dpi=120)
+    plt.close(figura)
+
+    return d, D
 
 
 # ============================================================

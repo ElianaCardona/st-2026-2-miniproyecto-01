@@ -88,12 +88,45 @@ prueba. Por qué ningún dato posterior al origen entra al modelo.}}
 
 ## 4. Estacionariedad e identificación
 
-{{Valor p de la prueba ADF para la serie, su diferencia regular, la
-estacional y las dos juntas. El d y el D elegidos.}}
+Tomé las decisiones con los primeros 96 meses (enero de 2016 a diciembre de
+2023) y dejé 2024 y 2025 reservados para el backtest. Apliqué la prueba ADF
+a las cuatro versiones; todas con constante y sin tendencia determinista
+(especificación `c` de `adfuller`, con el número de rezagos de la prueba ADF seleccionado por AIC):
+
+| Versión | Estadístico | Valor p | Observaciones efectivas de la prueba |
+|---|---|---|---|
+| Nivel (original) | -1.609 | 0.4793 | 83 |
+| Diferencia regular de un mes (d1) | -5.374 | 0.0000 | 83 |
+| Diferencia estacional de 12 meses (D12) | -3.252 | 0.0171 | 71 |
+| Ambas diferencias (d1 + D12) | -3.542 | 0.0070 | 71 |
+
+El nivel no permite rechazar la raíz unitaria y las tres versiones
+diferenciadas sí la rechazan al 5 %. Elegí d=1 y D=1 para los modelos
+candidatos. La diferencia estacional sola también rechazó la hipótesis de
+raíz unitaria (p = 0.0171) y sigue siendo una alternativa razonable, así
+que no me guié por el menor valor p: comparé las dos candidatas sobre los
+mismos 96 meses con promedios por tramo y con la ACF, y repetí la ADF con
+constante y tendencia como verificación (D12 rechaza más fuerte, -5.542
+con p = 0.0000; d1 + D12 queda en el borde, con p = 0.0567).
+
+Los promedios por tramos de 27 a 29 meses separan a las candidatas. En D12
+los tres tramos promedian +1628.89, +828.19 y -1065.40 miles de MWh: el
+cambio anual no se queda junto a una constante, desciende de forma
+sostenida a lo largo de la muestra, en línea con el ascenso lento y
+episódico de la tendencia de la sección 2. En d1 + D12 los mismos tramos
+promedian -122.61, -279.40 y +4.44, sin patrón. Este contraste sugiere,
+sin probarlo, que D12 conserva un nivel lento que se desplaza. La ACF
+apunta en la misma dirección: en D12 el rezago 1 es positivo y persistente
+(+0.403) y la PACF sigue fuera de banda en el rezago 24 (-0.261); en
+d1 + D12 el rezago 1 es -0.239 y el 24 no supera la banda (-0.054 en la
+ACF, -0.120 en la PACF). Por eso elegí aplicar ambas diferencias antes que
+la estacional sola.
 
 ![ACF y PACF](../figuras/acf_pacf.png)
 
-{{Qué rezagos salen de las bandas y qué órdenes sugieren.}}
+La figura muestra la ACF y la PACF de la serie después de aplicar una diferencia regular y una estacional de 12 meses. La serie transformada tiene 83 observaciones y la PACF se estimó con el método de Yule–Walker. Con una banda de referencia aproximada de ±0,215, en la ACF quedaron fuera de la banda los rezagos 1 (−0,239) y 12 (−0,391). En la PACF quedaron fuera los rezagos 1 (−0,239), 2 (−0,230) y 12 (−0,311). En el rezago 24, tanto la ACF (−0,054) como la PACF (−0,120) quedaron dentro de las bandas mostradas.
+
+Los picos negativos de la ACF en los rezagos 1 y 12 me llevaron a considerar un término de media móvil regular ($q=1$) y uno estacional ($Q=1$), respectivamente. Los rezagos destacados en la PACF también me llevaron a considerar términos autorregresivos. Para elegir el orden SARIMA, compararé por AIC los modelos candidatos.
 
 ## 5. Modelos clásicos
 
