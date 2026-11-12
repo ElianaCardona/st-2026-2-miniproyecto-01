@@ -1,0 +1,3 @@
+modelo,decision,RMSE,MAE,MAPE
+estacional ingenuo,TODO: describa aquí la decisión sobre huecos y datos atípicos,6850.49,5686.72,4.49
+ingenuo,TODO: describa aquí la decisión sobre huecos y datos atípicos,30781.09,25480.9,20.3
