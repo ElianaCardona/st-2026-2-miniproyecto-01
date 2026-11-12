@@ -17,6 +17,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
+from statsmodels.tsa.seasonal import STL  # noqa: E402
 
 from comun import (RAIZ, backtest, cargar_serie, estacional_ingenuo,  # noqa: E402
                    fechas_siguientes, ingenuo)
@@ -74,10 +75,42 @@ def graficar_serie(serie):
 # ============================================================
 # 2. Descomposición
 # ============================================================
+MESES = ("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio",
+         "agosto", "septiembre", "octubre", "noviembre", "diciembre")
+
 
 def descomponer(serie):
-    """TODO: STL robusta con el periodo de la serie; guarde figuras/stl.png."""
-    raise NotImplementedError("descomposición STL")
+    """STL robusta con el periodo de la serie; guarda figuras/stl.png.
+
+    Ajusta STL(serie, period=PERIODO, robust=True) a la serie preparada y
+    dibuja los cuatro paneles: observado, tendencia, estacional y residuo.
+    Imprime la tendencia en los extremos, el mes con el efecto estacional
+    promedio más alto y el más bajo, y el residuo de mayor valor absoluto.
+    """
+    stl = STL(serie, period=PERIODO, robust=True).fit()
+    paneles = [("Observado", stl.observed), ("Tendencia", stl.trend),
+               ("Estacional", stl.seasonal), ("Residuo", stl.resid)]
+    figura, ejes = plt.subplots(4, 1, figsize=(9, 8), sharex=True)
+    for eje, (nombre, datos) in zip(ejes, paneles):
+        eje.plot(datos.index, datos.to_numpy())
+        eje.set_ylabel(nombre)
+    ejes[0].set_title(f"{VALOR}: descomposición STL robusta (periodo {PERIODO})")
+    figura.tight_layout()
+    figura.savefig(FIGURAS / "stl.png", dpi=120)
+    plt.close(figura)
+
+    print(f"Tendencia: {serie.index[0]:%Y-%m}: {stl.trend.iloc[0]:.2f} -> "
+          f"{serie.index[-1]:%Y-%m}: {stl.trend.iloc[-1]:.2f}")
+
+    promedio = stl.seasonal.groupby(stl.seasonal.index.month).mean()
+    alto, bajo = promedio.idxmax(), promedio.idxmin()
+    print(f"Efecto estacional promedio: más alto en {MESES[alto - 1]} "
+          f"({promedio[alto]:+.2f}), más bajo en {MESES[bajo - 1]} "
+          f"({promedio[bajo]:+.2f}), en miles de MWh")
+
+    fecha = stl.resid.abs().idxmax()
+    print(f"Mayor residuo en valor absoluto: {fecha:%Y-%m}, "
+          f"valor = {stl.resid[fecha]:+.2f} miles de MWh")
 
 
 # ============================================================

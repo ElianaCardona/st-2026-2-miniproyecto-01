@@ -46,11 +46,38 @@ columna `decision` de la tabla.
 
 ## 2. Componentes
 
+Apliqué una descomposición STL robusta con un periodo de 12 meses a la serie
+preparada. La figura muestra los cuatro paneles del ajuste: la serie
+observada, la tendencia, la componente estacional y el residuo.
+
 ![STL](../figuras/stl.png)
 
-{{Lectura de la descomposición STL: cómo es la tendencia, qué meses quedan
-arriba y abajo en la estacional y con cuánto, y dónde está el residuo más
-grande.}}
+La tendencia sube de 117873.73 miles de MWh en enero de 2016 a 127217.74 en
+diciembre de 2025, un aumento de 9344.01 miles de MWh (el 7.9 %) a lo largo
+de la década. No es una recta: se mantiene casi plana entre 2016 y 2019
+(117696.65 en junio de 2016 y 119457.09 en enero de 2018), el ascenso se
+concentra entre 2020 y 2022 (121843.92 en enero de 2020 y 125742.72 en
+junio de 2022) y alrededor de 2023 desciende hasta un mínimo local de
+124446.86 en octubre de 2023; desde ahí vuelve a subir hasta los 127217.74
+de diciembre de 2025.
+
+Los efectos estacionales se expresan respecto a la tendencia: indican, en
+promedio, cuánto agrega o resta cada mes sobre el nivel de tendencia. Julio
+es el mes con el efecto más alto (+35449.38 miles de MWh) y agosto le sigue
+de cerca (+33927.15): los meses del verano quedan muy por encima de la
+tendencia. En el lado opuesto, abril es el más bajo (-28185.58) y noviembre
+el segundo más bajo (-22805.84), los meses de ventas más bajas del ciclo
+anual. La distancia entre julio y abril, 63634.96 miles de MWh, da la
+escala del ciclo.
+
+El residuo recoge lo que ni la tendencia ni la estacionalidad explican. Su
+mayor valor en valor absoluto es positivo y ocurre en enero de 2018:
++17009.84 miles de MWh, es decir, ese mes las ventas superaron en esa cantidad
+a lo que tendencia y estacionalidad explicaban. Destaca sobre el resto: la
+desviación típica del residuo es de 4432.21 miles de MWh y el residuo más
+negativo es -14491.71, en junio de 2023. El tamaño del ciclo anual frente a
+un residuo de esa escala anticipa la ventaja del estacional ingenuo sobre
+el ingenuo que se cuantifica en la sección 3.
 
 ## 3. Líneas base y backtest
 
