@@ -5,14 +5,15 @@ serie de ejemplo cuando ya no la use.
 
 | Campo | Valor |
 |---|---|
-| Archivo | {{nombre del CSV}} |
-| Qué mide | {{...}} |
-| Fuente | {{institución o conjunto de datos, con enlace}} |
-| Licencia | {{...}} |
-| Frecuencia | mensual |
-| Periodo | {{primer mes}} a {{último mes}} ({{n}} observaciones) |
-| Columna de fecha | {{...}} |
-| Columna que se pronostica | {{...}} |
+| Archivo | [`electricidad_residencial_eeuu.csv`](electricidad_residencial_eeuu.csv) |
+| Qué mide | Ventas mensuales de electricidad a clientes del sector residencial de Estados Unidos, expresadas en miles de MWh. |
+| Fuente | U.S. Energy Information Administration (EIA), [API de datos abiertos](https://www.eia.gov/opendata/documentation.php). Consulta de ventas minoristas de electricidad con los filtros `stateid=US`, `sectorid=RES` y frecuencia mensual. |
+| Licencia | Datos de dominio público. La EIA permite su reutilización y solicita atribución. [Política de reutilización de la EIA](https://www.eia.gov/about/copyrights_reuse.php). |
+| Frecuencia | Mensual. |
+| Periodo | Enero de 2016 a diciembre de 2025, con 120 observaciones consecutivas. |
+| Columna de fecha | `fecha`. Primer día de cada mes, en formato `AAAA-MM-DD`. |
+| Columna que se pronostica | `ventas_miles_mwh`. Total mensual de ventas residenciales, en miles de MWh. |
+
 
 ## Serie de ejemplo
 
