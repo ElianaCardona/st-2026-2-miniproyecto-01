@@ -1,3 +1,5 @@
 modelo,decision,RMSE,MAE,MAPE
 estacional ingenuo,"Serie sin huecos. Se conservaron las 120 observaciones originales. La revisión por mes calendario señaló valores inusuales, sin evidencia de errores de registro.",6850.49,5686.72,4.49
+"SARIMAX(0, 1, 0)(0, 1, 1, 12) + exógenas","Serie sin huecos. Se conservaron las 120 observaciones originales. La revisión por mes calendario señaló valores inusuales, sin evidencia de errores de registro.",8300.63,6904.44,5.47
+"SARIMA(0, 1, 0)(0, 1, 1, 12)","Serie sin huecos. Se conservaron las 120 observaciones originales. La revisión por mes calendario señaló valores inusuales, sin evidencia de errores de registro.",8395.83,7120.84,5.72
 ingenuo,"Serie sin huecos. Se conservaron las 120 observaciones originales. La revisión por mes calendario señaló valores inusuales, sin evidencia de errores de registro.",30781.09,25480.9,20.3

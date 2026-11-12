@@ -11,6 +11,8 @@ y las figuras que produce este guion.
 """
 import warnings
 
+from itertools import product
+
 import matplotlib
 
 matplotlib.use("Agg")
@@ -18,8 +20,11 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 from statsmodels.graphics.tsaplots import plot_acf, plot_pacf  # noqa: E402
+from statsmodels.stats.diagnostic import acorr_ljungbox  # noqa: E402
+from statsmodels.tsa.arima.model import ARIMA  # noqa: E402
 from statsmodels.tsa.seasonal import STL  # noqa: E402
 from statsmodels.tsa.stattools import acf, adfuller, pacf  # noqa: E402
+from statsmodels.tsa.statespace.sarimax import SARIMAX  # noqa: E402
 
 from comun import (RAIZ, backtest, cargar_serie, estacional_ingenuo,  # noqa: E402
                    fechas_siguientes, ingenuo)
@@ -218,36 +223,118 @@ def estacionariedad(serie):
 # pronósticos y solo usa `entrenamiento`. Así entra al backtest común.
 
 def elegir_sarima(serie, d, D):
-    """TODO: rejilla pequeña de órdenes (p, q, P, Q) comparada por AIC.
+    """Rejilla de 16 candidatos SARIMA comparada por AIC sobre los 96 meses de decisión.
 
-    Ajuste con toda la serie preparada, imprima la tabla de AIC, revise los
-    residuos del elegido con Ljung-Box y guarde figuras/residuos.png.
-    Devuelva el orden y el orden estacional elegidos.
+    Ajusta los candidatos (p, q, P y Q en {0, 1}) con los d, D y PERIODO
+    del guion sobre enero de 2016 a diciembre de 2023; 2024 y 2025 quedan
+    reservados para el backtest. Imprime la tabla de AIC y convergencia,
+    registra los ajustes fallidos y elige el menor AIC entre los que
+    convergieron con AIC finito. Revisa los residuos del elegido con
+    Ljung-Box en los rezagos 12 y 24 (gl = p + q + P + Q), guarda
+    figuras/residuos.png y devuelve el orden y el orden estacional.
     """
-    raise NotImplementedError("selección del SARIMA")
+    entrenamiento = serie.iloc[:96]  # 2016-01 a 2023-12; 2024-2025 para el backtest
+    rejilla = [((p, d, q), (P, D, Q, PERIODO))
+               for p, q, P, Q in product((0, 1), repeat=4)]
+
+    print(f"Rejilla SARIMA sobre {len(entrenamiento)} meses "
+          f"({entrenamiento.index[0]:%Y-%m} a {entrenamiento.index[-1]:%Y-%m}):")
+    print("  orden regular   orden estacional         AIC  convergencia")
+    filas = []
+    for orden, orden_estacional in rejilla:
+        try:
+            ajuste = ARIMA(entrenamiento, order=orden,
+                           seasonal_order=orden_estacional).fit()
+            aic = ajuste.aic
+            convergio = bool(ajuste.mle_retvals.get("converged", True))
+            estado = "convergió" if convergio else "no convergió"
+        except Exception as error:
+            ajuste, aic, convergio = None, float("nan"), False
+            estado = f"falló ({type(error).__name__})"
+        filas.append({"orden": orden, "orden_estacional": orden_estacional,
+                      "aic": aic, "convergio": convergio, "ajuste": ajuste})
+        texto = f"{aic:10.2f}" if np.isfinite(aic) else f"{'-':>10}"
+        print(f"  {str(orden):15s} {str(orden_estacional):19s} {texto}  {estado}")
+
+    fallidos = sum(1 for f in filas if not np.isfinite(f["aic"]))
+    elegibles = [f for f in filas if f["convergio"] and np.isfinite(f["aic"])]
+    if not elegibles:
+        raise RuntimeError("ningún candidato convergió con AIC finito")
+    elegido = min(elegibles, key=lambda f: f["aic"])
+    orden, orden_estacional = elegido["orden"], elegido["orden_estacional"]
+    print(f"Ajustes fallidos o sin AIC finito: {fallidos} de {len(rejilla)}")
+    print(f"Modelo elegido por AIC: SARIMA{orden}{orden_estacional} "
+          f"(AIC = {elegido['aic']:.2f})")
+
+    residuos = pd.Series(np.asarray(elegido["ajuste"].resid),
+                         index=entrenamiento.index)
+    gl = orden[0] + orden[2] + orden_estacional[0] + orden_estacional[2]
+    lb = acorr_ljungbox(residuos, lags=[12, 24], model_df=gl)
+    print(f"Ljung-Box de los residuos (gl = p + q + P + Q = {gl}):")
+    for lag, prueba in lb.iterrows():
+        print(f"  rezago {int(lag):2d}: estadístico = {prueba['lb_stat']:8.2f}, "
+              f"valor p = {prueba['lb_pvalue']:.4f}")
+
+    figura, ejes = plt.subplots(1, 2, figsize=(9.6, 3.4))
+    ejes[0].plot(residuos.index, residuos.to_numpy())
+    ejes[0].set_title("Residuos")
+    ejes[0].set_ylabel("miles de MWh")
+    plot_acf(residuos, lags=36, zero=False, ax=ejes[1],
+             title="ACF de los residuos")
+    figura.suptitle(f"SARIMA{orden}{orden_estacional}")
+    figura.tight_layout()
+    figura.savefig(FIGURAS / "residuos.png", dpi=120)
+    plt.close(figura)
+
+    return orden, orden_estacional
 
 
 def modelo_sarima(orden, orden_estacional):
-    """TODO: devuelva la función modelo(entrenamiento, h) del SARIMA elegido."""
-    raise NotImplementedError("SARIMA en el backtest")
+    """Función modelo(entrenamiento, h) del SARIMA elegido.
+
+    En cada origen reajusta ARIMA con el orden seleccionado usando solo
+    la serie de entrenamiento que recibe, avisa si el ajuste no converge
+    y devuelve los h pronósticos en la escala original.
+    """
+    def modelo(entrenamiento, h):
+        ajuste = ARIMA(entrenamiento, order=orden,
+                       seasonal_order=orden_estacional).fit()
+        if not ajuste.mle_retvals.get("converged", True):
+            print(f"  aviso: SARIMA sin convergencia en el origen "
+                  f"{entrenamiento.index[-1]:%Y-%m}")
+        return np.asarray(ajuste.forecast(h))
+    return modelo
 
 
 def exogenas(serie):
-    """TODO: DataFrame de variables conocidas de antemano, con el índice de la serie.
+    """Días calendario de cada mes, conocidos de antemano, como exógena.
 
-    Por ejemplo, el número de festivos o de días hábiles de cada mes. Debe
-    cubrir también los 12 meses que siguen al final de la serie.
+    Devuelve un DataFrame con la columna `dias` y el índice mensual de la
+    serie extendido 12 meses más allá del final, para cubrir el horizonte
+    del backtest.
     """
-    raise NotImplementedError("variables exógenas")
+    indice = serie.index.append(fechas_siguientes(serie, PERIODO))
+    return pd.DataFrame({"dias": indice.days_in_month}, index=indice)
 
 
 def modelo_sarimax(orden, orden_estacional, x):
-    """TODO: devuelva modelo(entrenamiento, h) de un SARIMAX con exógenas x.
+    """Función modelo(entrenamiento, h) de un SARIMAX con las exógenas x.
 
-    Use x.loc[entrenamiento.index] para ajustar y
-    x.loc[fechas_siguientes(entrenamiento, h)] para pronosticar.
+    Ajusta con x.loc[entrenamiento.index] y pronostica h meses con los
+    días de las fechas siguientes; avisa si el ajuste no converge y
+    devuelve los h pronósticos en la escala original.
     """
-    raise NotImplementedError("SARIMAX en el backtest")
+    def modelo(entrenamiento, h):
+        ajuste = SARIMAX(entrenamiento, order=orden,
+                         seasonal_order=orden_estacional,
+                         exog=x.loc[entrenamiento.index]).fit()
+        if not ajuste.mle_retvals.get("converged", True):
+            print(f"  aviso: SARIMAX sin convergencia en el origen "
+                  f"{entrenamiento.index[-1]:%Y-%m}")
+        futuro = fechas_siguientes(entrenamiento, h)
+        pronostico = ajuste.get_forecast(h, exog=x.loc[futuro]).predicted_mean
+        return np.asarray(pronostico)
+    return modelo
 
 
 # ============================================================
