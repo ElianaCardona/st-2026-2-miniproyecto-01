@@ -29,9 +29,8 @@ entrega pierde el 20 %; quien no aparezca aquí no cuenta como parte del grupo.
 
 | Nombre completo | Código | Correo institucional |
 |---|---|---|
-| | | |
-| | | |
-| | | |
+| Eliana Vanessa Cardona Burbano|22507209|eliana.cardona@uao.edu.co |
+
 
 ## Entrega
 

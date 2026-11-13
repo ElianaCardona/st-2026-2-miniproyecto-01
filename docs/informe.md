@@ -190,8 +190,8 @@ solo el rezago 12 queda fuera de la banda de confianza (-0,36).
 Apliqué la prueba de Ljung–Box para evaluar conjuntamente las autocorrelaciones 
 de los residuos hasta los rezagos 12 y 24. Desconté un grado de libertad por el
 coeficiente de media móvil estacional estimado, por lo que las pruebas usaron
- 11 y 23 grados de libertad, respectivamente. Hasta el rezago 12, rechacé la hipótesis 
- de autocorrelaciones nulas al nivel del 5 % (estadístico de 23,24 y valor p de 0,0164).
+11 y 23 grados de libertad, respectivamente. Hasta el rezago 12, rechacé la hipótesis 
+de autocorrelaciones nulas al nivel del 5 % (estadístico de 23,24 y valor p de 0,0164).
   En la ACF también destaca el rezago 12, lo que sugiere que queda dependencia estacional 
   en los residuos. Hasta el rezago 24, la prueba arrojó un estadístico de 25,77 y 
   un valor p de 0,3120, por lo que no rechacé la hipótesis nula para ese conjunto de rezagos.
